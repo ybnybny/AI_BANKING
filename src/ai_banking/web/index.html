@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Banking Agent · 智能银行助手</title>
+<style>
+  :root {
+    --bg: #f2f4f8;
+    --surface: #ffffff;
+    --primary: #165dff;
+    --primary-dark: #0f46c4;
+    --primary-soft: #e8efff;
+    --text: #1f2430;
+    --text-muted: #697386;
+    --user-bubble: #165dff;
+    --user-text: #ffffff;
+    --assistant-bubble: #ffffff;
+    --assistant-text: #1f2430;
+    --border: #e3e8f0;
+    --danger: #d92d20;
+    --danger-soft: #fee4e2;
+    --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+    --shadow-md: 0 4px 16px rgba(16, 24, 40, 0.08);
+    --radius: 16px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+            "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .brand .logo {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--primary) 0%, #3f7bff 100%);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .brand h1 {
+    font-size: 17px;
+    font-weight: 600;
+    margin: 0;
+    line-height: 1.3;
+    letter-spacing: 0.2px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  .status-chip .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #b0b7c3;
+  }
+
+  .status-chip.online { color: #067647; border-color: #a6f4c5; background: #ecfdf3; }
+  .status-chip.online .dot { background: #12b76a; }
+  .status-chip.offline { color: #b42318; border-color: #fecdca; background: #fef3f2; }
+  .status-chip.offline .dot { background: #f04438; }
+
+  .user-selector {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  .user-selector input {
+    width: 64px;
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: var(--font);
+    color: var(--text);
+    background: var(--surface);
+  }
+
+  .user-selector input:focus { outline: 2px solid var(--primary-soft); border-color: var(--primary); }
+
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 0 16px;
+    min-height: 0;
+  }
+
+  .chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 4px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    scroll-behavior: smooth;
+  }
+
+  .chat::-webkit-scrollbar { width: 8px; }
+  .chat::-webkit-scrollbar-thumb { background: #cbd2df; border-radius: 8px; }
+  .chat::-webkit-scrollbar-track { background: transparent; }
+
+  .row {
+    display: flex;
+    width: 100%;
+  }
+
+  .row.user { justify-content: flex-end; }
+  .row.assistant { justify-content: flex-start; }
+
+  .bubble {
+    max-width: 78%;
+    padding: 11px 14px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    line-height: 1.6;
+    word-break: break-word;
+    white-space: pre-wrap;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .row.user .bubble {
+    background: var(--user-bubble);
+    color: var(--user-text);
+    border-bottom-right-radius: 4px;
+  }
+
+  .row.assistant .bubble {
+    background: var(--assistant-bubble);
+    color: var(--assistant-text);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+
+  .row.assistant .bubble.error {
+    background: var(--danger-soft);
+    border-color: #fecdca;
+    color: #b42318;
+  }
+
+  .meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .row.user .meta { color: rgba(255, 255, 255, 0.75); }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 6px;
+    font-size: 11px;
+    background: rgba(127, 142, 165, 0.14);
+    color: inherit;
+  }
+
+  .row.user .tag { background: rgba(255, 255, 255, 0.18); }
+
+  .typing {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    padding: 4px 2px;
+  }
+
+  .typing span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #98a2b3;
+    animation: bounce 1.2s infinite ease-in-out;
+  }
+
+  .typing span:nth-child(2) { animation-delay: 0.15s; }
+  .typing span:nth-child(3) { animation-delay: 0.3s; }
+
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-5px); opacity: 1; }
+  }
+
+  .suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 4px 4px;
+  }
+
+  .suggestions button {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 12.5px;
+    font-family: var(--font);
+    padding: 7px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+  }
+
+  .suggestions button:hover {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+    color: var(--primary-dark);
+  }
+
+  .composer {
+    padding: 12px 4px 20px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+
+  .composer textarea {
+    flex: 1;
+    resize: none;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 11px 14px;
+    font-size: 14px;
+    font-family: var(--font);
+    color: var(--text);
+    background: var(--surface);
+    max-height: 132px;
+    min-height: 46px;
+    line-height: 1.5;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .composer textarea:focus { outline: 2px solid var(--primary-soft); border-color: var(--primary); }
+
+  .composer .send {
+    border: none;
+    background: var(--primary);
+    color: #fff;
+    font-size: 14px;
+    font-family: var(--font);
+    font-weight: 600;
+    padding: 0 20px;
+    height: 46px;
+    border-radius: 14px;
+    cursor: pointer;
+    box-shadow: var(--shadow-md);
+    transition: background 0.15s, transform 0.05s;
+    white-space: nowrap;
+  }
+
+  .composer .send:hover { background: var(--primary-dark); }
+  .composer .send:active { transform: translateY(1px); }
+  .composer .send:disabled { background: #a8b8d8; cursor: not-allowed; }
+
+  @media (max-width: 560px) {
+    header { padding: 12px 14px; }
+    .brand h1 { font-size: 15px; }
+    .bubble { max-width: 90%; }
+    .composer .send { padding: 0 14px; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">银</div>
+      <h1>AI Banking Agent · 智能银行助手</h1>
+    </div>
+    <div class="header-right">
+      <label class="user-selector">
+        用户ID
+        <input id="userId" type="number" min="1" step="1" value="1" aria-label="用户ID">
+      </label>
+      <span id="statusChip" class="status-chip">
+        <span class="dot"></span><span id="statusText">检测中…</span>
+      </span>
+    </div>
+  </header>
+
+  <main>
+    <div id="chat" class="chat" role="log" aria-live="polite"></div>
+
+    <div id="suggestions" class="suggestions" aria-label="快捷指令">
+      <button data-text="转 500 元给张三，备注聚餐">转 500 元给张三，备注聚餐</button>
+      <button data-text="分析我上个月的账单">分析我上个月的账单</button>
+      <button data-text="推荐一款稳健理财">推荐一款稳健理财</button>
+      <button data-text="帮我挂失尾号 8888 的卡">帮我挂失尾号 8888 的卡</button>
+      <button data-text="取消我的视频会员订阅">取消我的视频会员订阅</button>
+      <button data-text="检测我爱人生日，锁定1000元">检测我爱人生日，锁定1000元</button>
+    </div>
+
+    <div class="composer">
+      <textarea id="input" rows="1" placeholder="输入你的银行需求…（Enter 发送）" aria-label="消息输入框"></textarea>
+      <button id="send" class="send">发送</button>
+    </div>
+  </main>
+
+<script>
+(function () {
+  "use strict";
+
+  var chatEl = document.getElementById("chat");
+  var inputEl = document.getElementById("input");
+  var sendBtn = document.getElementById("send");
+  var userIdEl = document.getElementById("userId");
+  var statusChip = document.getElementById("statusChip");
+  var statusText = document.getElementById("statusText");
+  var suggestionsEl = document.getElementById("suggestions");
+
+  var sessionId = null; // 首次对话后由后端返回并复用
+  var busy = false;
+
+  // ---------- 基础 DOM 工具 ----------
+  function scrollToBottom() {
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }
+
+  function addRow(role, text, meta) {
+    var row = document.createElement("div");
+    row.className = "row " + role;
+
+    var bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.textContent = text;
+    row.appendChild(bubble);
+
+    if (meta && meta.length) {
+      var metaEl = document.createElement("div");
+      metaEl.className = "meta";
+      meta.forEach(function (item) {
+        var tag = document.createElement("span");
+        tag.className = "tag";
+        tag.textContent = item;
+        metaEl.appendChild(tag);
+      });
+      bubble.appendChild(metaEl);
+    }
+
+    chatEl.appendChild(row);
+    scrollToBottom();
+    return row;
+  }
+
+  function addTyping() {
+    var row = document.createElement("div");
+    row.className = "row assistant";
+    row.id = "typingRow";
+
+    var bubble = document.createElement("div");
+    bubble.className = "bubble";
+    var typing = document.createElement("span");
+    typing.className = "typing";
+    for (var i = 0; i < 3; i++) {
+      var dot = document.createElement("span");
+      typing.appendChild(dot);
+    }
+    bubble.appendChild(typing);
+    row.appendChild(bubble);
+
+    chatEl.appendChild(row);
+    scrollToBottom();
+    return row;
+  }
+
+  function removeTyping() {
+    var row = document.getElementById("typingRow");
+    if (row) row.parentNode.removeChild(row);
+  }
+
+  function setBusy(state) {
+    busy = state;
+    sendBtn.disabled = state;
+    inputEl.disabled = state;
+  }
+
+  function addError(message) {
+    var row = document.createElement("div");
+    row.className = "row assistant";
+    var bubble = document.createElement("div");
+    bubble.className = "bubble error";
+    bubble.textContent = "⚠ " + message;
+    row.appendChild(bubble);
+    chatEl.appendChild(row);
+    scrollToBottom();
+  }
+
+  // ---------- 状态指示 ----------
+  function setStatus(online) {
+    statusChip.classList.remove("online", "offline");
+    if (online) {
+      statusChip.classList.add("online");
+      statusText.textContent = "在线";
+    } else {
+      statusChip.classList.add("offline");
+      statusText.textContent = "离线";
+    }
+  }
+
+  function checkHealth() {
+    fetch("/health", { method: "GET" })
+      .then(function (res) {
+        if (!res.ok) throw new Error("bad status");
+        return res.json();
+      })
+      .then(function (data) {
+        setStatus(data && data.status === "ok");
+      })
+      .catch(function () {
+        setStatus(false);
+      });
+  }
+
+  // ---------- 对话 ----------
+  function parseUserId() {
+    var v = parseInt(userIdEl.value, 10);
+    if (isNaN(v) || v < 1) v = 1;
+    userIdEl.value = v;
+    return v;
+  }
+
+  function sendMessage(message) {
+    if (busy) return;
+    message = (message || "").trim();
+    if (!message) return;
+
+    addRow("user", message);
+    inputEl.value = "";
+    autoResize();
+    setBusy(true);
+    addTyping();
+
+    var payload = {
+      user_id: parseUserId(),
+      session_id: sessionId,
+      message: message
+    };
+
+    fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+      .then(function (res) {
+        if (!res.ok) {
+          throw new Error("HTTP " + res.status + " " + res.statusText);
+        }
+        return res.json();
+      })
+      .then(function (data) {
+        removeTyping();
+        if (!data) throw new Error("空响应");
+
+        if (data.session_id) sessionId = data.session_id;
+
+        var meta = [];
+        if (data.intent) meta.push("意图: " + data.intent);
+        if (data.tool_used) meta.push("工具: " + data.tool_used);
+        if (data.requires_confirmation) meta.push("需确认");
+        if (data.data && typeof data.data === "object" && Object.keys(data.data).length) {
+          meta.push("含数据");
+        }
+
+        addRow("assistant", data.response || "（无回复内容）", meta);
+      })
+      .catch(function (err) {
+        removeTyping();
+        var msg = "请求失败";
+        if (err && err.message) msg = "请求失败：" + err.message;
+        if (msg.indexOf("TypeError") !== -1 || msg.indexOf("Failed to fetch") !== -1) {
+          msg = "网络错误：无法连接后端服务，请检查服务是否已启动。";
+        }
+        addError(msg);
+      })
+      .finally(function () {
+        setBusy(false);
+        inputEl.focus();
+      });
+  }
+
+  function autoResize() {
+    inputEl.style.height = "auto";
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 132) + "px";
+  }
+
+  // ---------- 事件绑定 ----------
+  sendBtn.addEventListener("click", function () {
+    sendMessage(inputEl.value);
+  });
+
+  inputEl.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage(inputEl.value);
+    }
+  });
+
+  inputEl.addEventListener("input", autoResize);
+
+  suggestionsEl.addEventListener("click", function (e) {
+    var btn = e.target.closest ? e.target.closest("button") : null;
+    if (!btn || !suggestionsEl.contains(btn)) return;
+    var text = btn.getAttribute("data-text") || "";
+    inputEl.value = text;
+    autoResize();
+    sendMessage(text);
+  });
+
+  // ---------- 启动 ----------
+  checkHealth();
+  inputEl.focus();
+})();
+</script>
+</body>
+</html>
